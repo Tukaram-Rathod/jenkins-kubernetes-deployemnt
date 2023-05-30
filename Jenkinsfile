@@ -1,81 +1,37 @@
-'''pipeline {
+pipeline{
 
-  environment {
-    dockerimagename = "tukaramrathod02/react-app"
-    dockerImage = ""
-  }
+	agent any
 
-  agent any
+	environment {
+		DOCKERHUB_CREDENTIALS=credentials('DockerHub')
+	}
 
-  stages {
+	stages {
 
-    stage('Checkout Source') {
-      steps {
-        git 'https://github.com/Tukaram-Rathod/jenkins-kubernetes-deployemnt.git'
-      }
-    }
+		stage('Build') {
 
-    stage('Build image') {
-      steps{
-        script {
-          dockerImage = docker.build dockerimagename
-        }
-      }
-    }
+			steps {
+				sh 'docker build -t tukaramrathod02/nodeapp:latest .'
+			}
+		}
 
-    stage('Pushing Image') {
-      environment {
-               registryCredential = 'DockerHub_Crediential'
-           }
-      steps{
-        script {
-          docker.withRegistry( 'https://registry.hub.docker.com', registryCredential ) {
-            dockerImage.push("latest")
-          }
-        }
-      }
-    }
+		stage('Login') {
 
-    stage('Deploying React.js container to Kubernetes') {
-      steps {
-        script {
-          kubernetesDeploy(configs: "deployment.yaml", "service.yaml")
-        }
-      }
-    }
+			steps {
+				sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+			}
+		}
 
-  }
+		stage('Push') {
 
-}'''
-pipeline {
-  agent any
-  }
-  stages {
-    stage('Build') {
-      steps {
-        // Checkout code from version control system
-        git 'https://github.com/Tukaram-Rathod/jenkins-kubernetes-deployemnt.git'
-        
-        // Build Docker image
-        sh 'docker build -t tukaramrathod02/react-app:v1 .'
-        
-        // Push Docker image to a registry
-        sh 'docker push tukaramrathod02/react-app:v1'
-      }
-    }
-    stage('Deploy') {
-      steps {
-        // Deploy to Kubernetes cluster
-        sh 'kubectl apply -f deployemnts.yaml'
-        sh 'kubectl apply -f service.yaml'
-      }
-    }
-    stage('Test') {
-      steps {
-        // Deploy to Kubernetes cluster
-        sh 'kubectl get pod'
-        sh 'kubectl get node'
-      }
-    }
-  }  
-}
+			steps {
+				sh 'docker push tukaramrathod02/nodeapp:latest'
+			}
+		}
+	}
+
+	post {
+		always {
+			sh 'docker logout'
+		}
+	}
